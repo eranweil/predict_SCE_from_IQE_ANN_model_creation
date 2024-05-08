@@ -29,6 +29,9 @@ def train_model_ANN(features_array, extra_features_array, labels_array, test_siz
     # Define early stopping callback
     early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
 
+    # Lists to store results for each fold
+    fold_results = []
+
     # K-fold Cross-Validation
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
     for fold, (train_index, val_index) in enumerate(kf.split(features_array)):
@@ -84,6 +87,39 @@ def train_model_ANN(features_array, extra_features_array, labels_array, test_siz
 
         print(f"Fold {fold + 1}: Train Loss = {history.history['loss'][-1]}, Val Loss = {history.history['val_loss'][-1]}")
 
+        # After training, get the best epoch
+        best_epoch = early_stopping.stopped_epoch + 1  # EarlyStopping counts from 0
+
+        # Predict and calculate metrics on validation set
+        val_predictions = model.predict([X_val, extra_val])
+        val_mse = mean_squared_error(y_val, val_predictions)
+        val_r2 = r2_score(y_val, val_predictions)
+        val_mae = mean_absolute_error(y_val, val_predictions)
+
+        # Store fold results
+        fold_results.append({
+            "fold": fold + 1,
+            "val_index": val_index,
+            "epochs": best_epoch,
+            "train_loss": history.history['loss'][-1],
+            "val_loss": history.history['val_loss'][-1],
+            "val_mse": val_mse,
+            "val_r2": val_r2,
+            "val_mae": val_mae
+        })
+
+    # After the loop, print results for each fold
+    print("\nFold Results:")
+    for result in fold_results:
+        print(f"\nFold {result['fold']}:")
+        print(f"  Chosen for Validation: Index {result['val_index']}")
+        print(f"  Number of Epochs: {result['epochs']}")
+        print(f"  Train Loss: {result['train_loss']:.4f}")
+        print(f"  Val Loss: {result['val_loss']:.4f}")
+        print(f"  Val MSE: {result['val_mse']:.4f}")
+        print(f"  Val R^2: {result['val_r2']:.4f}")
+        print(f"  Val MAE: {result['val_mae']:.4f}")
+
     # After cross-validation, retrain the best model on the entire dataset (optional)
     best_model = model
 
@@ -133,7 +169,6 @@ def predict_with_model(base_directory, filename, model_path, feature_means_path,
     # Read the input data (IQE) and handle NaN values
     input_data = np.array(genfromtxt(os.path.join(base_directory, filename), delimiter=',', usecols=(0, 1)))
     input_data = np.expand_dims(input_data[:, 1], axis=0)  # IQE Data
-
     nan_indices = np.isnan(input_data)
     input_data[nan_indices] = np.take(default_features, nan_indices.nonzero()[1])
 

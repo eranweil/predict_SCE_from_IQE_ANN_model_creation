@@ -62,7 +62,8 @@ def read_data(base_directory, noise_std_dev=0.001, default_device_length=100):
                         raise ValueError(f"Invalid data format in file: {file_name}")  # Raise error if not NaN
 
                 # Extract the second column (IQE data) to features_array
-                features_array.append(data[:, 1])
+                features_array.append(data[:, 1])  # Choose wavelengths by granularity of 250[nm] by choosing indexes
+                # features_array.append(data[4:-5, 1])  # Segev wavelengths
 
                 # Extract device length from file name, or use default
                 match = re.search(r"_L_(\d+)\.csv$", file_name)
@@ -144,6 +145,7 @@ def plot_predicted_vs_actual_SCE(base_directory, device_param):
 
     predicted_file = os.path.join(base_directory, "Predicted_results", f"predict_SCE_{device_param}.csv")
     actual_file = os.path.join(base_directory, "SCE_results", f"SCE_{device_param}.csv")
+    # actual_file = os.path.join(base_directory, "SCE_SEGEV", f"SCE_{device_param}.csv")  # SCE for SEGEV data
     iqe_file = os.path.join(base_directory, "IQE_results", f"IQE_{device_param}.csv")
 
     # Read Predicted SCE
@@ -169,17 +171,40 @@ def plot_predicted_vs_actual_SCE(base_directory, device_param):
         print(f"Error: IQE data not found at '{iqe_file}'")
         return
 
-    # Calculate Metrics
-    mse_values = mean_squared_error(actual_data[:, 1], predicted_data[:, 1], multioutput='raw_values')
-    max_mse = np.max(mse_values)
-    r2 = r2_score(actual_data[:, 1], predicted_data[:, 1])
-    mae_values = mean_absolute_error(actual_data[:, 1], predicted_data[:, 1], multioutput='raw_values')
-    max_mae = np.max(mae_values)
+    # Check if dimensions are the same
+    if predicted_data.shape[0] == actual_data.shape[0]:
+        # If dimensions are the same, use the original data for metrics
+        mean_squared_error_values = mean_squared_error(actual_data[:, 1], predicted_data[:, 1], multioutput='raw_values')
+        maximum_mean_squared_error = np.max(mean_squared_error_values)
+        r_squared = r2_score(actual_data[:, 1], predicted_data[:, 1])
+        mean_absolute_error_values = mean_absolute_error(actual_data[:, 1], predicted_data[:, 1], multioutput='raw_values')
+        maximum_mean_absolute_error = np.max(mean_absolute_error_values)
 
-    # Plot 1: Predicted vs. Actual SCE
-    plt.figure(figsize=(10, 6))
-    plt.plot(predicted_data[:, 0], predicted_data[:, 1], label='Predicted SCE', marker='o', linestyle='-', color='blue')
-    plt.plot(actual_data[:, 0], actual_data[:, 1], label='Actual SCE', marker='x', linestyle='--', color='orange')
+        # Plot both original datasets
+        plt.plot(predicted_data[:, 0], predicted_data[:, 1], label='Predicted SCE', marker='o', linestyle='-', color='blue')
+        plt.plot(actual_data[:, 0], actual_data[:, 1], label='Actual SCE', marker='x', linestyle='--', color='orange')
+
+    else:
+        # If dimensions are different, interpolate to a common x-axis
+        minimum_x_value = max(np.min(predicted_data[:, 0]), np.min(actual_data[:, 0]))
+        maximum_x_value = min(np.max(predicted_data[:, 0]), np.max(actual_data[:, 0]))
+
+        x_values_for_interpolation = np.linspace(minimum_x_value, maximum_x_value, num=100)
+        predicted_values_interpolated = np.interp(x_values_for_interpolation, predicted_data[:, 0], predicted_data[:, 1])
+        actual_values_interpolated = np.interp(x_values_for_interpolation, actual_data[:, 0], actual_data[:, 1])
+
+        # Calculate Metrics using interpolated data
+        mean_squared_error_values = mean_squared_error(actual_values_interpolated, predicted_values_interpolated, multioutput='raw_values')
+        maximum_mean_squared_error = np.max(mean_squared_error_values)
+        r_squared = r2_score(actual_values_interpolated, predicted_values_interpolated)
+        mean_absolute_error_values = mean_absolute_error(actual_values_interpolated, predicted_values_interpolated, multioutput='raw_values')
+        maximum_mean_absolute_error = np.max(mean_absolute_error_values)
+
+        # Plot both original and interpolated datasets
+        plt.plot(predicted_data[:, 0], predicted_data[:, 1], label='Predicted SCE', marker='o', linestyle='-', color='blue', alpha=0.5)
+        plt.plot(actual_data[:, 0], actual_data[:, 1], label='Actual SCE', marker='x', linestyle='--', color='orange', alpha=0.5)
+        plt.plot(x_values_for_interpolation, predicted_values_interpolated, label='Predicted SCE (Interpolated)', linestyle='-', color='blue')
+        plt.plot(x_values_for_interpolation, actual_values_interpolated, label='Actual SCE (Interpolated)', linestyle='--', color='orange')
 
     plt.xlabel('Position', fontsize=12)
     plt.ylabel('SCE', fontsize=12)
@@ -192,16 +217,16 @@ def plot_predicted_vs_actual_SCE(base_directory, device_param):
     text_y_start = 0.95
     text_y_offset = 0.05
 
-    plt.text(text_x, text_y_start, f"Max MSE: {max_mse:.3e}", transform=plt.gca().transAxes, ha='center')
-    plt.text(text_x, text_y_start - text_y_offset, f"R-squared: {r2:.3f}", transform=plt.gca().transAxes, ha='center')
-    plt.text(text_x, text_y_start - 2 * text_y_offset, f"Max MAE: {max_mae:.3e}", transform=plt.gca().transAxes, ha='center')
+    plt.text(text_x, text_y_start, f"Max MSE: {maximum_mean_squared_error:.3e}", transform=plt.gca().transAxes, ha='center')
+    plt.text(text_x, text_y_start - text_y_offset, f"R-squared: {r_squared:.3f}", transform=plt.gca().transAxes, ha='center')
+    plt.text(text_x, text_y_start - 2 * text_y_offset, f"Max MAE: {maximum_mean_absolute_error:.3e}", transform=plt.gca().transAxes, ha='center')
 
-    # Plot 2: IQE
+    # Plot 2: Internal Quantum Efficiency
     plt.figure(figsize=(10, 6))
-    plt.plot(iqe_data[:, 0], iqe_data[:, 1], label='IQE', marker='.', linestyle='-', color='green')
+    plt.plot(iqe_data[:, 0], iqe_data[:, 1], label='Internal Quantum Efficiency', marker='.', linestyle='-', color='green')
     plt.xlabel('Wavelength', fontsize=12)
-    plt.ylabel('IQE', fontsize=12)
-    plt.title(f'IQE for {device_param}', fontsize=14)
+    plt.ylabel('Internal Quantum Efficiency', fontsize=12)
+    plt.title(f'Internal Quantum Efficiency for {device_param}', fontsize=14)
     plt.legend()
     plt.grid(True)
 

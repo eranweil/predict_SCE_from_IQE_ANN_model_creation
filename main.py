@@ -19,6 +19,7 @@ if __name__ == '__main__':
     # Directory and file paths
     base_directory = "/Users/eranweil/PycharmProjects/MSc_ML_code/"  # Base directory (replace with user's actual path)
     base_directory_test = os.path.join(base_directory, "IQE_results")  # Path to test files for display
+    base_directory_segev = os.path.join(base_directory, "IQE_SEGEV")  # Path to test files for display
     model_path = os.path.join(base_directory, "SCE_model")  # Path to trained model
     feature_means_path = os.path.join(base_directory, 'feature_means.npy')  # Path to feature means
     results_directory = os.path.join(base_directory, "Predicted_results")  # Path to results of model prediction
@@ -27,7 +28,7 @@ if __name__ == '__main__':
     test_filenames = [
         "IQE_bulk_doping_1e+16_p0_1e+18_n0_1e+18_taup_10_taun_10_mup_500_mun_1450_L_100.csv",
         "IQE_bulk_doping_1e+14_p0_1e+18_n0_1e+18_taup_1.000000e+02_taun_1.000000e+02_mup_1.077217e+03_mun_3.123930e+03_L_140.csv",
-        "IQE_bulk_doping_1e+15_p0_6e+16_n0_6e+16_taup_1_taun_1_mup_3.871318e+02_mun_1.122682e+03_L_220.csv"
+        "IQE_bulk_doping_1e+15_p0_6e+16_n0_6e+16_taup_1_taun_1_mup_3.871318e+02_mun_1.122682e+03_L_220.csv",
     ]
 
     # Comment from here to avoid training and load trained model
@@ -45,6 +46,7 @@ if __name__ == '__main__':
     model.save(model_path)
     # Comment until here to avoid training and load trained model
 
+    # Comment from here to avoid predicting test_filenames
     # Predict and plot predictions for chosen IQE files
     for filename in test_filenames:
         device_params = filename[4:-4]
@@ -57,11 +59,15 @@ if __name__ == '__main__':
         np.savetxt(predicted_SCE_file, predicted_SCE, delimiter=",")
         print(f"Saved predictions for '{filename}' to '{predicted_SCE_file}'")
         plot_predicted_vs_actual_SCE(base_directory, device_params)
+    # Comment until here to avoid predicting test_filenames
 
+    # # Comment from here to avoid predicting Segev results
     # # Predict SCE with the trained model for lab measured IQE
-    # test_filename = "SEGEV_IQE_minimized.csv"
-    # predicted_SCE_file = os.path.join(results_directory, f"predict_SCE_SEGEV.csv")
-    # device_length = 100
-    # predicted_SCE = predict_with_model(loaded_model, base_directory_test, test_filename, default_features, device_length, number_of_intervals_in_mesh)
+    # test_filename = "IQE_SEGEV_minimized_L_250.csv"
+    # device_params = test_filename[4:-4]
+    # predicted_SCE = predict_with_model(base_directory_segev, test_filename, model_path, feature_means_path)
+    # predicted_SCE_file = os.path.join(results_directory, f"predict_SCE_SEGEV_minimized_L_250.csv")
     # np.savetxt(predicted_SCE_file, predicted_SCE, delimiter=",")
     # print(f"Saved predictions for 'SEGEV_IQE.csv' to '{predicted_SCE_file}'")
+    # plot_predicted_vs_actual_SCE(base_directory, device_params)
+    # # Comment until here to avoid predicting Segev results
