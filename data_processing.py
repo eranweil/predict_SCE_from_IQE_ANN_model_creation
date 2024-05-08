@@ -1,5 +1,6 @@
 # data_processing.py
 
+import re
 import os
 import csv
 import numpy as np
@@ -29,7 +30,7 @@ def clean_empty_data_points(training_data_path, data_files1, data_files2):
 
 
 # Reads and preprocesses training and label data. Handles potential file errors.
-def read_data(base_directory, noise_std_dev=0.001):
+def read_data(base_directory, noise_std_dev=0.001, default_device_length=100):
     try:
         # Get a list of all training and labels data
         training_data_path = os.path.join(base_directory, 'IQE_results')
@@ -41,52 +42,68 @@ def read_data(base_directory, noise_std_dev=0.001):
         # Handle database generation errors which have created discrepancy between training data and labels
         training_files, label_files = clean_empty_data_points(training_data_path, training_files, label_files)
 
+        # Initialize lists to store the data
         features_array = []
+        extra_features_array = []
         labels_array = []
 
-        # Read training data (IQE) and append to features_array with error handling
-        for f in sorted(training_files):  # Use sorted files to maintain order
+        # Read training data (IQE) and extract device length from filename
+        for file_name in sorted(training_files):
             try:
-                data = genfromtxt(os.path.join(training_data_path, f), delimiter=',')
-                # Validate data shape and content
-                if data.ndim != 2 or data.shape[1] < 2 or not np.all(np.isfinite(data)):
-                    raise ValueError(f"Invalid data format in file: {f}")
-                features_array.append(data[:, 1]) # For gideon segev data change to features_array.append(data[4:-5, 1])
-            except (csv.Error, ValueError) as e:  # Handle CSV-specific and value errors separately
-                print(f"Error reading training file {f}: {e}")
+                # Load data from the CSV file (only first 2 columns needed)
+                data = genfromtxt(os.path.join(training_data_path, file_name), delimiter=',', usecols=(0, 1))
 
-        # Read labels data (SCE) and append to labels_array with error handling
-        for f in sorted(label_files):
+                # Check if the two columns have the same length and if there are any NaN values
+                if data.shape[1] != 2 or np.isnan(data).any():
+                    if np.isnan(data).any():
+                        # Replace NaN values with 0
+                        data = np.nan_to_num(data, nan=0.0)
+                    else:
+                        raise ValueError(f"Invalid data format in file: {file_name}")  # Raise error if not NaN
+
+                # Extract the second column (IQE data) to features_array
+                features_array.append(data[:, 1])
+
+                # Extract device length from file name, or use default
+                match = re.search(r"_L_(\d+)\.csv$", file_name)
+                if match:
+                    extra_features_array.append(int(match.group(1)))
+                else:
+                    extra_features_array.append(default_device_length)  # Default value
+
+            except (csv.Error, ValueError) as error:
+                print(f"Error reading training file {file_name}: {error}")
+
+        # Read labels data (SCE)
+        for file_name in sorted(label_files):
             try:
-                data = genfromtxt(os.path.join(label_data_path, f), delimiter=',')
-                # Validate data shape and content
+                data = genfromtxt(os.path.join(label_data_path, file_name), delimiter=',')
                 if data.ndim != 2 or data.shape[1] < 2 or not np.all(np.isfinite(data)):
-                    raise ValueError(f"Invalid data format in file: {f}")
-                labels_array.append(data[:, 1])
-            except (csv.Error, ValueError) as e:  # Handle CSV-specific and value errors separately
-                print(f"Error reading training file {f}: {e}")
+                    raise ValueError(f"Invalid data format in file: {file_name}")
+                labels_array.append(data[:, 1])  # Append the second column (SCE data)
+            except (csv.Error, ValueError) as error:
+                print(f"Error reading training file {file_name}: {error}")
 
-        # Convert lists to numpy arrays after successful reading
+        # Convert lists to NumPy arrays
         features_array = np.array(features_array)
         labels_array = np.array(labels_array)
+        extra_features_array = np.array(extra_features_array)
 
-        # Add gaussian noise to features and labels for model robustness
+        # Add Gaussian noise for robustness (if enabled)
         if noise_std_dev > 0:
             features_array += np.random.normal(0, noise_std_dev, features_array.shape)
             labels_array += np.random.normal(0, noise_std_dev, labels_array.shape)
-            features_array = np.clip(features_array, 0, 1)
+            features_array = np.clip(features_array, 0, 1)  # Clip to valid range [0, 1]
             labels_array = np.clip(labels_array, 0, 1)
 
-        return features_array, labels_array
+        return features_array, extra_features_array, labels_array
 
-    # Handle missing file error
-    except FileNotFoundError as e:
-        print(f"File not found: {e}")
-        return None, None
-    # Handle unexpected errors
-    except Exception as e:
-        print(f"Unexpected error occurred: {e}")
-        return None, None
+    except FileNotFoundError as error:
+        print(f"File not found: {error}")
+        return None, None, None
+    except Exception as error:
+        print(f"Unexpected error occurred: {error}")
+        return None, None, None
 
 
 # Creates an identical mesh to the one created by Comsol for the database
@@ -147,7 +164,7 @@ def plot_predicted_vs_actual_SCE(base_directory, device_param):
 
     # Read IQE
     try:
-        iqe_data = np.genfromtxt(iqe_file, delimiter=",")
+        iqe_data = np.genfromtxt(iqe_file, delimiter=",", usecols=(0, 1))
     except FileNotFoundError:
         print(f"Error: IQE data not found at '{iqe_file}'")
         return
@@ -182,7 +199,7 @@ def plot_predicted_vs_actual_SCE(base_directory, device_param):
     # Plot 2: IQE
     plt.figure(figsize=(10, 6))
     plt.plot(iqe_data[:, 0], iqe_data[:, 1], label='IQE', marker='.', linestyle='-', color='green')
-    plt.xlabel('Position', fontsize=12)
+    plt.xlabel('Wavelength', fontsize=12)
     plt.ylabel('IQE', fontsize=12)
     plt.title(f'IQE for {device_param}', fontsize=14)
     plt.legend()
