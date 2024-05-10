@@ -5,7 +5,9 @@ import os
 import csv
 import numpy as np
 from numpy import genfromtxt
-import matplotlib.pyplot as plt
+import matplotlib
+from matplotlib import pyplot as plt
+matplotlib.rcParams['text.latex.preamble'] = r'\usepackage{siunitx}'  # Add siunitx for unit formatting
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 
 # Lists files in a directory, excluding hidden files (starting with '.')
@@ -141,7 +143,10 @@ def create_results_mesh(size_of_mesh_element, number_of_intervals_in_mesh):
 
 
 # Plots predicted vs. actual SCE data for a given device parameters
-def plot_predicted_vs_actual_SCE(base_directory, device_param):
+def plot_predicted_vs_actual_SCE(base_directory, device_param, device_index):
+
+    greek_letterz = [chr(code) for code in range(945, 970)]
+    # print(greek_letterz)
 
     predicted_file = os.path.join(base_directory, "Predicted_results", f"predict_SCE_{device_param}.csv")
     actual_file = os.path.join(base_directory, "SCE_results", f"SCE_{device_param}.csv")
@@ -171,6 +176,20 @@ def plot_predicted_vs_actual_SCE(base_directory, device_param):
         print(f"Error: IQE data not found at '{iqe_file}'")
         return
 
+    # Setting default values for device parameters
+    device_params = {
+        "bulk_doping": 1e16,
+        "hole_concentration": 1e18,
+        "electron_concentration": 1e18,
+        "hole_lifetime": 10,
+        "electron_lifetime": 10,
+        "hole_mobility": 500,
+        "electron_mobility": 1450,
+        "device_length": 250
+    }
+
+    # Begin SCE plot
+    plt.figure(figsize=(10, 6))
     # Check if dimensions are the same
     if predicted_data.shape[0] == actual_data.shape[0]:
         # If dimensions are the same, use the original data for metrics
@@ -179,6 +198,17 @@ def plot_predicted_vs_actual_SCE(base_directory, device_param):
         r_squared = r2_score(actual_data[:, 1], predicted_data[:, 1])
         mean_absolute_error_values = mean_absolute_error(actual_data[:, 1], predicted_data[:, 1], multioutput='raw_values')
         maximum_mean_absolute_error = np.max(mean_absolute_error_values)
+
+        # Extract data from IQE filename
+        iqe_components = device_param.split("_")
+        device_params['bulk_doping'] = float(iqe_components[2])  # Extract bulk doping in cm^-3
+        device_params['hole_concentration'] = float(iqe_components[4])  # Extract hole concentration in cm^-3
+        device_params['electron_concentration'] = float(iqe_components[6])  # Extract electron concentration in cm^-3
+        device_params['hole_lifetime'] = float(iqe_components[8])  # Extract hole lifetime in us
+        device_params['electron_lifetime'] = float(iqe_components[10])  # Extract electron lifetime in us
+        device_params['hole_mobility'] = float(iqe_components[12])  # Extract hole mobility in cm^2/Vs
+        device_params['electron_mobility'] = float(iqe_components[14])  # Extract electron mobility in cm^2/Vs
+        device_params['device_length'] = float(iqe_components[16].replace("L_", ""))  # Extract device length in um
 
         # Plot both original datasets
         plt.plot(predicted_data[:, 0], predicted_data[:, 1], label='Predicted SCE', marker='o', linestyle='-', color='blue')
@@ -206,28 +236,55 @@ def plot_predicted_vs_actual_SCE(base_directory, device_param):
         plt.plot(x_values_for_interpolation, predicted_values_interpolated, label='Predicted SCE (Interpolated)', linestyle='-', color='blue')
         plt.plot(x_values_for_interpolation, actual_values_interpolated, label='Actual SCE (Interpolated)', linestyle='--', color='orange')
 
-    plt.xlabel('Position', fontsize=12)
-    plt.ylabel('SCE', fontsize=12)
-    plt.title(f'Predicted vs. Actual SCE for {device_param}', fontsize=14)
+    plt.xlabel(f'X[{greek_letterz[11]}m]', fontsize=12, fontweight='bold')
+    plt.ylabel('SCE(X)', fontsize=12, fontweight='bold')
+    plt.title(f'Predicted vs. Actual SCE for Device {device_index+1}', fontsize=14, fontweight='bold')
     plt.legend()
     plt.grid(True)
 
     # Add Metric Annotations at the Top Center
-    text_x = 0.5
-    text_y_start = 0.95
+    text_x_model_stats = 0.5
+    text_y_model_stats = [0.9, 0.8, 0.9]
     text_y_offset = 0.05
 
-    plt.text(text_x, text_y_start, f"Max MSE: {maximum_mean_squared_error:.3e}", transform=plt.gca().transAxes, ha='center')
-    plt.text(text_x, text_y_start - text_y_offset, f"R-squared: {r_squared:.3f}", transform=plt.gca().transAxes, ha='center')
-    plt.text(text_x, text_y_start - 2 * text_y_offset, f"Max MAE: {maximum_mean_absolute_error:.3e}", transform=plt.gca().transAxes, ha='center')
+    plt.text(text_x_model_stats, text_y_model_stats[device_index], f"MSE: {maximum_mean_squared_error:.3e}", transform=plt.gca().transAxes, ha='center', fontstyle='italic', fontweight='bold')
+    plt.text(text_x_model_stats, text_y_model_stats[device_index] - text_y_offset, f"R-squared: {r_squared:.3f}", transform=plt.gca().transAxes, ha='center', fontstyle='italic', fontweight='bold')
+    plt.text(text_x_model_stats, text_y_model_stats[device_index] - 2 * text_y_offset, f"MAE: {maximum_mean_absolute_error:.3e}", transform=plt.gca().transAxes, ha='center', fontstyle='italic', fontweight='bold')
+
+    # Add device parameters annotation
+    # device 1
+    text_x_SCE_params = [0.4, 0.5, 0.65]
+    text_y_SCE_params = [0.2, 0.22, 0.41]
+    device_params_text = (
+        f"L: {device_params['device_length']:.1f}[{greek_letterz[11]}m]\t"
+        f"Bulk Doping: {device_params['bulk_doping']:.1e}[cm$^{-3}$]\n"
+        f"P0: {device_params['hole_concentration']:.1e}[cm$^{-3}$]\t"
+        f"N0: {device_params['electron_concentration']:.1e}[cm$^{-3}$]\n"
+        f"τp: {device_params['hole_lifetime']:.1f}[{greek_letterz[11]}s]    "
+        f"τn: {device_params['electron_lifetime']:.1f}[{greek_letterz[11]}s]\n"
+        f"{greek_letterz[11]}n: {device_params['hole_mobility']:.1f}[cm²/Vs]    "
+        f"{greek_letterz[11]}p: {device_params['electron_mobility']:.1f}[cm²/Vs]"
+    )
+
+    plt.text(text_x_SCE_params[device_index], text_y_SCE_params[device_index], device_params_text,
+             transform=plt.gca().transAxes, ha='center', va='center', fontsize=14,
+             fontstyle='italic', fontweight='bold')
 
     # Plot 2: Internal Quantum Efficiency
     plt.figure(figsize=(10, 6))
     plt.plot(iqe_data[:, 0], iqe_data[:, 1], label='Internal Quantum Efficiency', marker='.', linestyle='-', color='green')
-    plt.xlabel('Wavelength', fontsize=12)
-    plt.ylabel('Internal Quantum Efficiency', fontsize=12)
-    plt.title(f'Internal Quantum Efficiency for {device_param}', fontsize=14)
+    plt.xlabel(f'Wavelength {greek_letterz[10]}[{greek_letterz[11]}m]', fontsize=12, fontweight='bold')
+    plt.ylabel(f'IQE({greek_letterz[10]})', fontsize=12, fontweight='bold')
+    plt.title(f'IQE for Device {device_index+1}', fontsize=14, fontweight='bold')
     plt.legend()
+
+    # device 1
+    text_x_IQE_params = [0.432, 0.46, 0.43]
+    text_y_IQE_params = [0.335, 0.322, 0.34]
+
+    plt.text(text_x_IQE_params[device_index], text_y_IQE_params[device_index], device_params_text,
+             transform=plt.gca().transAxes, ha='center', va='center', fontsize=12,
+             fontstyle='italic', fontweight='bold')
     plt.grid(True)
 
     plt.tight_layout()

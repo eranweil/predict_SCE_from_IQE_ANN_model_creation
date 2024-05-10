@@ -31,7 +31,7 @@ if __name__ == '__main__':
         "IQE_bulk_doping_1e+15_p0_6e+16_n0_6e+16_taup_1_taun_1_mup_3.871318e+02_mun_1.122682e+03_L_220.csv",
     ]
 
-    # Comment from here to avoid training and load trained model
+    # Comment from here to avoid training model
     # Load and split data, handling potential errors
     features_array, extra_features_array, labels_array = read_data(base_directory)
     if features_array is None or extra_features_array is None or labels_array is None:
@@ -44,21 +44,24 @@ if __name__ == '__main__':
     # Save the best model and the feature mean values of training data for use as default values (instead of NaN)
     np.save(feature_means_path, feature_means)
     model.save(model_path)
-    # Comment until here to avoid training and load trained model
+    # Comment until here to avoid training model
 
     # Comment from here to avoid predicting test_filenames
     # Predict and plot predictions for chosen IQE files
+    device_index = 0
     for filename in test_filenames:
-        device_params = filename[4:-4]
-
         # Predict SCE with model
         predicted_SCE = predict_with_model(base_directory_test, filename, model_path, feature_means_path)
+
+        # Text for plots
+        device_params = filename[4:-4]
 
         # Save Results
         predicted_SCE_file = os.path.join(results_directory, f"predict_SCE_{device_params}.csv")
         np.savetxt(predicted_SCE_file, predicted_SCE, delimiter=",")
         print(f"Saved predictions for '{filename}' to '{predicted_SCE_file}'")
-        plot_predicted_vs_actual_SCE(base_directory, device_params)
+        plot_predicted_vs_actual_SCE(base_directory, device_params, device_index)
+        device_index += 1
     # Comment until here to avoid predicting test_filenames
 
     # # Comment from here to avoid predicting Segev results
