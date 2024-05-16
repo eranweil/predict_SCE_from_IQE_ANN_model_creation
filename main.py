@@ -64,13 +64,13 @@ if __name__ == '__main__':
         device_index += 1
     # Comment until here to avoid predicting test_filenames
 
-    # Comment from here to avoid predicting Segev results
-    # Predict SCE with the trained model for lab measured IQE
-    test_filename = "IQE_SEGEV_minimized_L_250.csv"
-    device_params = test_filename[4:-4]
-    predicted_SCE = predict_with_model(iqe_directory_segev, test_filename, model_path, feature_means_path)
-    predicted_SCE_file = os.path.join(results_directory, f"predict_SCE_{device_params}.csv")
-    np.savetxt(predicted_SCE_file, predicted_SCE, delimiter=",")
-    print(f"Saved predictions for 'SEGEV_IQE.csv' to '{predicted_SCE_file}'")
-    plot_predicted_vs_actual_SCE_SEGEV(base_directory, device_params, 0)
-    # Comment until here to avoid predicting Segev results
+    # # Comment from here to avoid predicting Segev results
+    # # Predict SCE with the trained model for lab measured IQE
+    # test_filename = "IQE_SEGEV_minimized_L_250.csv"
+    # device_params = test_filename[4:-4]
+    # predicted_SCE = predict_with_model(iqe_directory_segev, test_filename, model_path, feature_means_path)
+    # predicted_SCE_file = os.path.join(results_directory, f"predict_SCE_{device_params}.csv")
+    # np.savetxt(predicted_SCE_file, predicted_SCE, delimiter=",")
+    # print(f"Saved predictions for 'SEGEV_IQE.csv' to '{predicted_SCE_file}'")
+    # plot_predicted_vs_actual_SCE_SEGEV(base_directory, device_params, 0)
+    # # Comment until here to avoid predicting Segev results
