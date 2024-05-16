@@ -292,7 +292,7 @@ def plot_predicted_vs_actual_SCE(base_directory, device_param, device_index):
 
 
 # Plots predicted vs. actual SCE data for a given device parameters
-def plot_predicted_vs_actual_SCE_SEGEV(base_directory, device_param, device_index):
+def plot_predicted_vs_actual_SCE_SEGEV(base_directory, device_param):
 
     greek_letterz = [chr(code) for code in range(945, 970)]
     # print(greek_letterz)
