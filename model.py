@@ -186,7 +186,7 @@ def predict_with_model(base_directory, filename, model_path, feature_means_path,
     output_prediction = loaded_model.predict([input_data, device_length_input])  # Use loaded_model
 
     # Create the output mesh
-    output_mesh = create_results_mesh(device_length / num_intervals, num_intervals)
+    output_mesh = create_results_mesh(device_length, num_intervals)
 
     # Create SCE data structure
     predicted_SCE = np.column_stack((np.array(output_mesh), output_prediction[0]))

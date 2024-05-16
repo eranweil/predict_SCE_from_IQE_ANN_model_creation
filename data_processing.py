@@ -110,13 +110,14 @@ def read_data(base_directory, noise_std_dev=0.001, default_device_length=100):
 
 
 # Creates an identical mesh to the one created by Comsol for the database
-def create_results_mesh(size_of_mesh_element, number_of_intervals_in_mesh):
+def create_results_mesh(device_length, number_of_intervals_in_mesh):
     section_0 = 10
     section_1 = 25
     section_2 = 50
     section_3 = 100
     section_4 = 200
     num_points = number_of_intervals_in_mesh + 1
+    size_of_mesh_element = device_length / number_of_intervals_in_mesh
     mesh_points = []
 
     for i in range(num_points):
@@ -150,7 +151,6 @@ def plot_predicted_vs_actual_SCE(base_directory, device_param, device_index):
 
     predicted_file = os.path.join(base_directory, "Predicted_results", f"predict_SCE_{device_param}.csv")
     actual_file = os.path.join(base_directory, "SCE_results", f"SCE_{device_param}.csv")
-    # actual_file = os.path.join(base_directory, "SCE_SEGEV", f"SCE_{device_param}.csv")  # SCE for SEGEV data
     iqe_file = os.path.join(base_directory, "IQE_results", f"IQE_{device_param}.csv")
 
     # Read Predicted SCE
@@ -287,5 +287,87 @@ def plot_predicted_vs_actual_SCE(base_directory, device_param, device_index):
              fontstyle='italic', fontweight='bold')
     plt.grid(True)
 
+    plt.tight_layout()
+    plt.show()
+
+
+# Plots predicted vs. actual SCE data for a given device parameters
+def plot_predicted_vs_actual_SCE_SEGEV(base_directory, device_param, device_index):
+
+    greek_letterz = [chr(code) for code in range(945, 970)]
+    # print(greek_letterz)
+
+    predicted_file = os.path.join(base_directory, "Predicted_results", f"predict_SCE_{device_param}.csv")
+    segev_file = os.path.join(base_directory, "SCE_SEGEV", f"SCE_{device_param}.csv")
+
+    # Read Predicted SCE
+    try:
+        predicted_data = np.genfromtxt(predicted_file, delimiter=",")
+    except FileNotFoundError:
+        print(f"Error: Predicted data not found at '{predicted_file}'")
+        return
+
+    # Read Actual SCE
+    try:
+        with open(segev_file, newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            actual_data = np.array([[float(row[0]), float(row[1])] for row in reader])
+    except FileNotFoundError:
+        print(f"Error: Actual data not found at '{segev_file}'")
+        return
+
+    # Begin SCE plot
+    plt.figure(figsize=(10, 6))
+    # Check if dimensions are the same
+    if predicted_data.shape[0] == actual_data.shape[0]:
+        # If dimensions are the same, use the original data for metrics
+        mean_squared_error_values = mean_squared_error(actual_data[:, 1], predicted_data[:, 1], multioutput='raw_values')
+        maximum_mean_squared_error = np.max(mean_squared_error_values)
+        r_squared = r2_score(actual_data[:, 1], predicted_data[:, 1])
+        mean_absolute_error_values = mean_absolute_error(actual_data[:, 1], predicted_data[:, 1], multioutput='raw_values')
+        maximum_mean_absolute_error = np.max(mean_absolute_error_values)
+
+        # Plot both original datasets
+        plt.plot(predicted_data[:, 0], predicted_data[:, 1], label='Predicted SCE', marker='o', linestyle='-', color='blue')
+        plt.plot(actual_data[:, 0], actual_data[:, 1], label='SEGEV SCE', marker='x', linestyle='--', color='orange')
+
+    else:
+        # If dimensions are different, interpolate to a common x-axis
+        minimum_x_value = max(np.min(predicted_data[:, 0]), np.min(actual_data[:, 0]))
+        maximum_x_value = min(np.max(predicted_data[:, 0]), np.max(actual_data[:, 0]))
+
+        x_values_for_interpolation = np.linspace(minimum_x_value, maximum_x_value, num=100)
+        predicted_values_interpolated = np.interp(x_values_for_interpolation, predicted_data[:, 0], predicted_data[:, 1])
+        actual_values_interpolated = np.interp(x_values_for_interpolation, actual_data[:, 0], actual_data[:, 1])
+
+        # Calculate Metrics using interpolated data
+        mean_squared_error_values = mean_squared_error(actual_values_interpolated, predicted_values_interpolated, multioutput='raw_values')
+        maximum_mean_squared_error = np.max(mean_squared_error_values)
+        r_squared = r2_score(actual_values_interpolated, predicted_values_interpolated)
+        mean_absolute_error_values = mean_absolute_error(actual_values_interpolated, predicted_values_interpolated, multioutput='raw_values')
+        maximum_mean_absolute_error = np.max(mean_absolute_error_values)
+
+        # Plot both original and interpolated datasets
+        plt.plot(predicted_data[:, 0], predicted_data[:, 1], label='Predicted SCE', marker='o', linestyle='-', color='blue', alpha=0.5)
+        plt.plot(actual_data[:, 0], actual_data[:, 1], label='SEGEV SCE', marker='x', linestyle='--', color='orange', alpha=0.5)
+        plt.plot(x_values_for_interpolation, predicted_values_interpolated, label='Predicted SCE (Interpolated)', linestyle='-', color='blue')
+        plt.plot(x_values_for_interpolation, actual_values_interpolated, label='SEGEV SCE (Interpolated)', linestyle='--', color='orange')
+
+    plt.xlabel(f'X[{greek_letterz[11]}m]', fontsize=12, fontweight='bold')
+    plt.ylabel('SCE(X)', fontsize=12, fontweight='bold')
+    plt.title(f'Predicted SCE vs. SEGEV SCE', fontsize=14, fontweight='bold')
+    plt.legend()
+    plt.grid(True)
+
+    # Add Metric Annotations at the Top Center
+    text_x_model_stats = 0.5
+    text_y_model_stats = 0.9
+    text_y_offset = 0.05
+
+    plt.text(text_x_model_stats, text_y_model_stats, f"MSE: {maximum_mean_squared_error:.3e}", transform=plt.gca().transAxes, ha='center', fontstyle='italic', fontweight='bold')
+    plt.text(text_x_model_stats, text_y_model_stats - text_y_offset, f"R-squared: {r_squared:.3f}", transform=plt.gca().transAxes, ha='center', fontstyle='italic', fontweight='bold')
+    plt.text(text_x_model_stats, text_y_model_stats - 2 * text_y_offset, f"MAE: {maximum_mean_absolute_error:.3e}", transform=plt.gca().transAxes, ha='center', fontstyle='italic', fontweight='bold')
+
+    plt.grid(True)
     plt.tight_layout()
     plt.show()
