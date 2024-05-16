@@ -72,5 +72,5 @@ if __name__ == '__main__':
     # predicted_SCE_file = os.path.join(results_directory, f"predict_SCE_{device_params}.csv")
     # np.savetxt(predicted_SCE_file, predicted_SCE, delimiter=",")
     # print(f"Saved predictions for 'SEGEV_IQE.csv' to '{predicted_SCE_file}'")
-    # plot_predicted_vs_actual_SCE_SEGEV(base_directory, device_params, 0)
+    # plot_predicted_vs_actual_SCE_SEGEV(base_directory, device_params)
     # # Comment until here to avoid predicting Segev results
