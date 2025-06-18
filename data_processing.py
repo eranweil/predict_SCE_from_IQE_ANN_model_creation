@@ -144,7 +144,7 @@ def create_results_mesh(device_length, number_of_intervals_in_mesh):
 
 
 # Plots predicted vs. actual SCE data for a given device parameters
-def plot_predicted_vs_actual_SCE(base_directory, device_param, device_index):
+def plot_predicted_vs_actual_SCE(base_directory, device_param, device_index, graph_annotations, standalone_graph=True):
 
     greek_letterz = [chr(code) for code in range(945, 970)]
     # print(greek_letterz)
@@ -236,9 +236,16 @@ def plot_predicted_vs_actual_SCE(base_directory, device_param, device_index):
         plt.plot(x_values_for_interpolation, predicted_values_interpolated, label='Predicted SCE (Interpolated)', linestyle='-', color='blue')
         plt.plot(x_values_for_interpolation, actual_values_interpolated, label='Actual SCE (Interpolated)', linestyle='--', color='orange')
 
-    plt.xlabel(f'X[{greek_letterz[11]}m]', fontsize=12, fontweight='bold')
-    plt.ylabel('SCE(X)', fontsize=12, fontweight='bold')
-    plt.title(f'Predicted vs. Actual SCE for Device {device_index+1}', fontsize=14, fontweight='bold')
+    plt.xlabel(f'X[{greek_letterz[11]}m]', fontsize=22, fontweight='bold')
+    plt.ylabel('SCE(X)', fontsize=22, fontweight='bold')
+    plt.tick_params(axis='both', which='major', labelsize=16)
+
+    # Add either plot title or plot annotation
+    if standalone_graph:
+        plt.title(f'Predicted vs. Actual SCE for Device {device_index + 1}', fontsize=26, fontweight='bold')
+    else:
+        plt.text(-0.15, 1.05, graph_annotations[1], transform=plt.gca().transAxes,
+                 ha='left', va='top', fontsize=30, fontweight='bold', color='darkblue')
     plt.legend()
     plt.grid(True)
 
@@ -270,12 +277,21 @@ def plot_predicted_vs_actual_SCE(base_directory, device_param, device_index):
              transform=plt.gca().transAxes, ha='center', va='center', fontsize=14,
              fontstyle='italic', fontweight='bold')
 
+    plt.tight_layout()
+
     # Plot 2: Internal Quantum Efficiency
     plt.figure(figsize=(10, 6))
     plt.plot(iqe_data[:, 0], iqe_data[:, 1], label='Internal Quantum Efficiency', marker='.', linestyle='-', color='green')
-    plt.xlabel(f'Wavelength {greek_letterz[10]}[{greek_letterz[11]}m]', fontsize=12, fontweight='bold')
-    plt.ylabel(f'IQE({greek_letterz[10]})', fontsize=12, fontweight='bold')
-    plt.title(f'IQE for Device {device_index+1}', fontsize=14, fontweight='bold')
+    plt.xlabel(f'Wavelength {greek_letterz[10]}[{greek_letterz[11]}m]', fontsize=22, fontweight='bold')
+    plt.ylabel(f'IQE({greek_letterz[10]})', fontsize=22, fontweight='bold')
+    plt.tick_params(axis='both', which='major', labelsize=16)
+
+    # Add either plot title or plot annotation
+    if standalone_graph:
+        plt.title(f'IQE for Device {device_index + 1}', fontsize=26, fontweight='bold')
+    else:
+        plt.text(-0.15, 1.05, graph_annotations[0], transform=plt.gca().transAxes,
+                 ha='left', va='top', fontsize=30, fontweight='bold', color='darkblue')
     plt.legend()
 
     # device 1
@@ -288,6 +304,7 @@ def plot_predicted_vs_actual_SCE(base_directory, device_param, device_index):
     plt.grid(True)
 
     plt.tight_layout()
+
     plt.show()
 
 
@@ -355,7 +372,7 @@ def plot_predicted_vs_actual_SCE_SEGEV(base_directory, device_param):
 
     plt.xlabel(f'X[{greek_letterz[11]}m]', fontsize=12, fontweight='bold')
     plt.ylabel('SCE(X)', fontsize=12, fontweight='bold')
-    plt.title(f'Predicted SCE vs. SEGEV SCE', fontsize=14, fontweight='bold')
+    plt.title(f'Predicted SCE vs. SEGEV SCE', fontsize=26, fontweight='bold')
     plt.legend()
     plt.grid(True)
 

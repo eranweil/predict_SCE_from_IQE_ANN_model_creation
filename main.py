@@ -31,6 +31,15 @@ if __name__ == '__main__':
         "IQE_bulk_doping_1e+15_p0_6e+16_n0_6e+16_taup_1_taun_1_mup_3.871318e+02_mun_1.122682e+03_L_220.csv",
     ]
 
+    # Optional annotations for graphs corresponding to test_filenames
+    graph_annotations = {
+        test_filenames[0]: ['a', 'b'],
+        test_filenames[1]: ['c', 'd'],
+        test_filenames[2]: ['e', 'f'],
+    }
+
+    standalone_graph = True
+
     # Comment from here to avoid training model
     # Load and split data, handling potential errors
     features_array, extra_features_array, labels_array = read_data(base_directory)
@@ -60,7 +69,7 @@ if __name__ == '__main__':
         predicted_SCE_file = os.path.join(results_directory, f"predict_SCE_{device_params}.csv")
         np.savetxt(predicted_SCE_file, predicted_SCE, delimiter=",")
         print(f"Saved predictions for '{filename}' to '{predicted_SCE_file}'")
-        plot_predicted_vs_actual_SCE(base_directory, device_params, device_index)
+        plot_predicted_vs_actual_SCE(base_directory, device_params, device_index, graph_annotations[filename], standalone_graph)
         device_index += 1
     # Comment until here to avoid predicting test_filenames
 
